@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: componente-a
+  datasource:
+    url: jdbc:mariadb://localhost:3306/clientes_pedidos_db
+    username: usuario
+    password: contraseña
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MariaDBDialect
+        format_sql: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: America/Guatemala
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.multipedidos: DEBUG
+    org.hibernate.SQL: DEBUG
