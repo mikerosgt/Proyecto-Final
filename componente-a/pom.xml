@@ -72,4 +72,47 @@
             </plugin>
         </plugins>
     </build>
+    <build>
+    <plugins>
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <configuration>
+                <excludes>
+                    <exclude>
+                        <groupId>org.projectlombok</groupId>
+                        <artifactId>lombok</artifactId>
+                    </exclude>
+                </excludes>
+            </configuration>
+        </plugin>
+        
+        <!-- Plugin OpenAPI para generar código AUTOMÁTICAMENTE -->
+        <plugin>
+            <groupId>org.openapitools</groupId>
+            <artifactId>openapi-generator-maven-plugin</artifactId>
+            <version>6.6.0</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>generate</goal>
+                    </goals>
+                    <configuration>
+                        <inputSpec>${project.basedir}/src/main/resources/openapi.yaml</inputSpec>
+                        <generatorName>spring</generatorName>
+                        <apiPackage>com.multipedidos.componentea.generated.api</apiPackage>
+                        <modelPackage>com.multipedidos.componentea.generated.model</modelPackage>
+                        <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
+                        <configOptions>
+                            <interfaceOnly>true</interfaceOnly>
+                            <useSpringBoot3>true</useSpringBoot3>
+                            <useBeanValidation>true</useBeanValidation>
+                            <openApiNullable>false</openApiNullable>
+                        </configOptions>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
 </project>

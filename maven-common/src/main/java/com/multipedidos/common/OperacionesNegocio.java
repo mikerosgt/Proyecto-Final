@@ -1,12 +1,13 @@
 package com.multipedidos.common;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
+/**
+ * Clase de utilidades para operaciones de negocio comunes
+ * Sin dependencias externas para mayor portabilidad
+ */
 public class OperacionesNegocio {
     
     public static double calcularTotalConIVA(double subtotal) {
-        log.info("Calculando total con IVA para subtotal: {}", subtotal);
+        System.out.println("Calculando total con IVA para subtotal: " + subtotal);
         return subtotal * 1.12;
     }
     
@@ -14,7 +15,7 @@ public class OperacionesNegocio {
         if (porcentaje < 0 || porcentaje > 100) {
             throw new IllegalArgumentException("El porcentaje de descuento debe estar entre 0 y 100");
         }
-        log.info("Aplicando descuento del {}% a total: {}", porcentaje, total);
+        System.out.println("Aplicando descuento del " + porcentaje + "% a total: " + total);
         return total - (total * (porcentaje / 100));
     }
     
@@ -27,13 +28,13 @@ public class OperacionesNegocio {
         } else {
             porcentajeDescuento = 10.0;
         }
-        log.info("Descuento automático calculado: {}% para subtotal: {}", porcentajeDescuento, subtotal);
+        System.out.println("Descuento automático calculado: " + porcentajeDescuento + "% para subtotal: " + subtotal);
         return porcentajeDescuento;
     }
     
     public static boolean validarCodigo(String codigo) {
         boolean valido = codigo != null && codigo.matches("[A-Z]{3}-\\d{4}");
-        log.info("Validación código {}: {}", codigo, valido);
+        System.out.println("Validación código " + codigo + ": " + valido);
         return valido;
     }
     
@@ -41,5 +42,9 @@ public class OperacionesNegocio {
         if (email == null) return false;
         String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
         return email.matches(emailRegex);
+    }
+    
+    public static String formatearMoneda(double cantidad) {
+        return String.format("Q. %.2f", cantidad);
     }
 }
