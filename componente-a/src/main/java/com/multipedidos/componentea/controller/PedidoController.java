@@ -2,73 +2,105 @@ package com.multipedidos.componentea.controller;
 
 import com.multipedidos.componentea.dto.PedidoDTO;
 import com.multipedidos.componentea.dto.PedidoInputDTO;
+import com.multipedidos.componentea.dto.ItemPedidoInputDTO;
 import com.multipedidos.componentea.service.PedidoService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.multipedidos.componentea.generated.api.PedidosApi;
+import com.multipedidos.componentea.generated.model.Pedido;
+import com.multipedidos.componentea.generated.model.PedidoInput;
+import com.multipedidos.componentea.generated.model.ItemPedidoInput;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
-@RequestMapping("/pedidos")
 @RequiredArgsConstructor
-@Tag(name = "Pedidos", description = "API para gestión de pedidos")
-public class PedidoController {
+public class PedidoController implements PedidosApi {
     
     private final PedidoService pedidoService;
     
-    @PostMapping
-    @Operation(summary = "Crear un pedido")
-    public ResponseEntity<PedidoDTO> crearPedido(@RequestBody PedidoInputDTO pedidoInput) {
+    @Override
+    public ResponseEntity<Pedido> crearPedido(PedidoInput pedidoInput) {
         log.info("POST /pedidos - Creando pedido para cliente ID: {}", pedidoInput.getClienteId());
         try {
-            PedidoDTO pedidoCreado = pedidoService.crearPedido(pedidoInput);
-            return ResponseEntity.status(HttpStatus.CREATED).body(pedidoCreado);
+            PedidoInputDTO pedidoInputDTO = convertirDesdeOpenAPI(pedidoInput);
+            PedidoDTO pedidoCreado = pedidoService.crearPedido(pedidoInputDTO);
+            Pedido response = convertirAOpenAPIModel(pedidoCreado);
+            
+            return ResponseEntity.status(201).body(response);
         } catch (RuntimeException e) {
             log.error("Error al crear pedido: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
     
-    @GetMapping
-    @Operation(summary = "Listar todos los pedidos")
-    public ResponseEntity<List<PedidoDTO>> listarPedidos() {
+    @Override
+    public ResponseEntity<List<Pedido>> listarPedidos() {
         log.info("GET /pedidos - Listando todos los pedidos");
-        List<PedidoDTO> pedidos = pedidoService.obtenerTodosLosPedidos();
+        List<Pedido> pedidos = pedidoService.obtenerTodosLosPedidos()
+                .stream()
+                .map(this::convertirAOpenAPIModel)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(pedidos);
     }
     
-    @GetMapping("/{id}")
-    @Operation(summary = "Obtener un pedido por ID")
-    public ResponseEntity<PedidoDTO> obtenerPedido(@PathVariable Long id) {
+    @Override
+    public ResponseEntity<Pedido> obtenerPedido(Long id) {
         log.info("GET /pedidos/{} - Obteniendo pedido", id);
         try {
-            PedidoDTO pedido = pedidoService.obtenerPedidoPorId(id);
-            return ResponseEntity.ok(pedido);
+            PedidoDTO pedidoDTO = pedidoService.obtenerPedidoPorId(id);
+            Pedido response = convertirAOpenAPIModel(pedidoDTO);
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             log.error("Pedido no encontrado: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
     
-    @GetMapping("/cliente/{clienteId}")
-    @Operation(summary = "Obtener pedidos por cliente")
-    public ResponseEntity<List<PedidoDTO>> obtenerPedidosPorCliente(@PathVariable Long clienteId) {
-        log.info("GET /pedidos/cliente/{} - Obteniendo pedidos del cliente", clienteId);
-        List<PedidoDTO> pedidos = pedidoService.obtenerPedidosPorCliente(clienteId);
-        return ResponseEntity.ok(pedidos);
+    private PedidoInputDTO convertirDesdeOpenAPI(PedidoInput pedidoInput) {
+        List<ItemPedidoInputDTO> items = pedidoInput.getProductos().stream()
+                .map(item -> ItemPedidoInputDTO.builder()
+                        .productoId(item.getProductoId())
+                        .cantidad(item.getCantidad())
+                        .build())
+                .collect(Collectors.toList());
+        
+        return PedidoInputDTO.builder()
+                .clienteId(pedidoInput.getClienteId())
+                .productos(items)
+                .build();
     }
     
-    @GetMapping("/pendientes")
-    @Operation(summary = "Obtener pedidos pendientes")
-    public ResponseEntity<List<PedidoDTO>> obtenerPedidosPendientes() {
-        log.info("GET /pedidos/pendientes - Obteniendo pedidos pendientes");
-        List<PedidoDTO> pedidos = pedidoService.obtenerPedidosPendientes();
-        return ResponseEntity.ok(pedidos);
+    private Pedido convertirAOpenAPIModel(PedidoDTO dto) {
+        Pedido pedido = new Pedido();
+        pedido.setId(dto.getId().longValue());
+        pedido.setClienteId(dto.getClienteId().longValue());
+        pedido.setClienteNombre(dto.getClienteNombre());
+        pedido.setSubtotal(dto.getSubtotal());
+        pedido.setDescuento(dto.getDescuento());
+        pedido.setTotal(dto.getTotal());
+        pedido.setEstado(dto.getEstado());
+        
+        // Convertir items del pedido
+        if (dto.getProductos() != null) {
+            List<com.multipedidos.componentea.generated.model.ItemPedido> items = dto.getProductos().stream()
+                    .map(item -> {
+                        com.multipedidos.componentea.generated.model.ItemPedido itemModel = 
+                            new com.multipedidos.componentea.generated.model.ItemPedido();
+                        itemModel.setProductoId(item.getProductoId().longValue());
+                        itemModel.setCantidad(item.getCantidad());
+                        itemModel.setPrecioUnitario(item.getPrecioUnitario());
+                        itemModel.setSubtotal(item.getSubtotal());
+                        return itemModel;
+                    })
+                    .collect(Collectors.toList());
+            pedido.setProductos(items);
+        }
+        
+        return pedido;
     }
 }

@@ -2,56 +2,71 @@ package com.multipedidos.componentea.controller;
 
 import com.multipedidos.componentea.dto.ClienteDTO;
 import com.multipedidos.componentea.service.ClienteService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.multipedidos.componentea.generated.api.ClientesApi;
+import com.multipedidos.componentea.generated.model.Cliente;
+import com.multipedidos.componentea.generated.model.ClienteInput;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
-@RequestMapping("/clientes")
 @RequiredArgsConstructor
-@Tag(name = "Clientes", description = "API para gestión de clientes")
-public class ClienteController {
+public class ClienteController implements ClientesApi {
     
     private final ClienteService clienteService;
     
-    @PostMapping
-    @Operation(summary = "Crear un cliente")
-    public ResponseEntity<ClienteDTO> crearCliente(@RequestBody ClienteDTO clienteDTO) {
-        log.info("POST /clientes - Creando cliente: {}", clienteDTO.getNombre());
+    @Override
+    public ResponseEntity<Cliente> crearCliente(ClienteInput clienteInput) {
+        log.info("POST /clientes - Creando cliente: {}", clienteInput.getNombre());
         try {
+            ClienteDTO clienteDTO = ClienteDTO.builder()
+                    .nombre(clienteInput.getNombre())
+                    .correo(clienteInput.getCorreo())
+                    .build();
+            
             ClienteDTO clienteCreado = clienteService.crearCliente(clienteDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(clienteCreado);
+            Cliente response = convertirAOpenAPIModel(clienteCreado);
+            
+            return ResponseEntity.status(201).body(response);
         } catch (IllegalArgumentException e) {
             log.error("Error al crear cliente: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
     
-    @GetMapping
-    @Operation(summary = "Listar todos los clientes")
-    public ResponseEntity<List<ClienteDTO>> listarClientes() {
+    @Override
+    public ResponseEntity<List<Cliente>> listarClientes() {
         log.info("GET /clientes - Listando todos los clientes");
-        List<ClienteDTO> clientes = clienteService.obtenerTodosLosClientes();
+        List<Cliente> clientes = clienteService.obtenerTodosLosClientes()
+                .stream()
+                .map(this::convertirAOpenAPIModel)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(clientes);
     }
     
-    @GetMapping("/{id}")
-    @Operation(summary = "Obtener un cliente por ID")
-    public ResponseEntity<ClienteDTO> obtenerCliente(@PathVariable Long id) {
+    @Override
+    public ResponseEntity<Cliente> obtenerCliente(Long id) {
         log.info("GET /clientes/{} - Obteniendo cliente", id);
         try {
-            ClienteDTO cliente = clienteService.obtenerClientePorId(id);
-            return ResponseEntity.ok(cliente);
+            ClienteDTO clienteDTO = clienteService.obtenerClientePorId(id);
+            Cliente response = convertirAOpenAPIModel(clienteDTO);
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             log.error("Cliente no encontrado: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
+    }
+    
+    private Cliente convertirAOpenAPIModel(ClienteDTO dto) {
+        Cliente cliente = new Cliente();
+        cliente.setId(dto.getId().longValue());
+        cliente.setNombre(dto.getNombre());
+        cliente.setCorreo(dto.getCorreo());
+        return cliente;
     }
 }
